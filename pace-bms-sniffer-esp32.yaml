@@ -1,0 +1,98 @@
+esphome:
+  name: pace-bms-sniffer-esp32
+  friendly_name: PACE BMS Sniffer
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+# External component configuration
+external_components:
+  - source:
+      type: local
+      path: components
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  
+  ap:
+    ssid: "PACE-BMS-Fallback"
+    password: "configme123"
+
+captive_portal:
+ota:
+  - platform: esphome
+
+logger:
+  level: DEBUG
+  baud_rate: 115200
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+# ============================================================================
+# GPIO
+# ============================================================================
+output:
+  - platform: gpio
+    id: driver_ctrl
+    pin: GPIO19
+  - platform: gpio
+    id: status_led
+    pin: GPIO4
+
+# ============================================================================
+# UART
+# ============================================================================
+uart:
+  - id: uart_bus
+    rx_pin: GPIO16
+    baud_rate: 9600
+
+# ============================================================================
+# PACE BMS SNIFFER
+# ============================================================================
+pace_bms_sniffer:
+  uart_id: uart_bus
+
+# ============================================================================
+# Other sensors
+# ============================================================================
+binary_sensor:
+  - platform: gpio
+    name: "Driver Status"
+    pin:
+      number: GPIO18
+      mode:
+        input: true
+        pullup: true
+
+sensor:
+  - platform: adc
+    pin: GPIO33
+    name: "Supply Voltage"
+    update_interval: 60s
+    attenuation: 12db
+    filters:
+      - multiply: 3.3
+    unit_of_measurement: "V"
+    device_class: voltage
+    accuracy_decimals: 2
+
+switch:
+  - platform: output
+    name: "High Load Driver"
+    output: driver_ctrl
+  - platform: output
+    name: "Status LED"
+    output: status_led
+
+interval:
+  - interval: 5s
+    then:
+      - output.turn_on: status_led
+      - delay: 100ms
+      - output.turn_off: status_led
